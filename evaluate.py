@@ -7,18 +7,16 @@ import numpy as np
 import os
 from dataset import AllStateDset
 from tqdm import tqdm
-import pdb
 
 def main(model, v):
-    DATA_DIR = os.path.join(os.environ['DSETS'], 'allstate')
+    DATA_DIR = os.path.join(os.environ['data'], 'allstate')
     testset = AllStateDset(os.path.join(DATA_DIR, 'test.csv'), train=False)
     size = len(testset)
-    testloader = thd.DataLoader(testset, batch_size=1024, num_workers=4)
-    criterion = nn.L1Loss()
+    testloader = thd.DataLoader(testset, batch_size=3072, num_workers=4)
 
     first = True
     model.eval()
-    pbar = tqdm(testloader, total=size//1024+1)
+    pbar = tqdm(testloader, total=size//3072+1)
     for data in pbar:
         categorical, continuous = data['cat'].cuda().long(), data['cont'].cuda().float()
 
@@ -43,10 +41,9 @@ def main(model, v):
     subm = np.stack([ids, preds], axis=1)
     subm = pd.DataFrame(subm, columns=['id', 'loss'])
     subm['id'] = subm['id'].astype(int)
-    pdb.set_trace()
     subm.to_csv(f'data/subm/submission_0{v}.csv', index=False)
 
 if __name__ == '__main__':
-    v='01'
+    v='04'
     model = torch.load(f'data/checkpoints/model_0{v}.ckpt')
-    main()
+    main(model, v)
