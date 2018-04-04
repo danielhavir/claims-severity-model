@@ -18,7 +18,7 @@ DATA_DIR = os.path.join(os.environ['data'], 'allstate')
 parser = argparse.ArgumentParser()
 
 # Model
-parser.add_argument('model', type=int, choices=[1,2,3], help='Which model to choose.')
+parser.add_argument('model', type=int, choices=[1,2,3,4], help='Which model to choose.')
 # Batch size
 parser.add_argument('-bs', '--batch_size', type=int, default=1024, help='Batch size.')
 # Epochs
@@ -48,7 +48,7 @@ with open('data/emb_size.json', 'r') as f:
     emb_size = json.load(f)
 
 df = pd.read_csv(os.path.join(args.data_dir, 'traindata.csv'))
-if args.model in [1,2]:
+if args.model in [1,2,4]:
     df = pd.get_dummies(df, columns=emb_size.keys())
     
 train_ids, val_ids = train_test_split(df.index.values, test_size=0.1, random_state=args.seed)
@@ -70,6 +70,11 @@ elif args.model == 3:
     trainset = AllStateDset(train_df)
     validset = AllStateDset(val_df)
     model = Net3(emb_size)
+
+elif args.model == 4:
+    trainset = AllStateDset(train_df, one_hot=True)
+    validset = AllStateDset(val_df, one_hot=True)
+    model = Net4(trainset.dim)
 
 print(model)
 
@@ -107,7 +112,7 @@ for epoch in range(1, args.epochs+1):
         running_loss = 0.0; total = 0
         pbar = tqdm(loaders[phase], total=sizes[phase]//args.batch_size+1)
         for i, data in enumerate(pbar):
-            if args.model in [1,2]:
+            if args.model in [1,2,4]:
                 inputs, labels = data['data'].float(), data['label']
                 if use_gpu:
                     inputs, labels = inputs.cuda(), labels.cuda()

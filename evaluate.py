@@ -14,7 +14,7 @@ DATA_DIR = os.path.join(os.environ['data'], 'allstate')
 parser = argparse.ArgumentParser()
 
 # Model
-parser.add_argument('model', type=int, choices=[1,2,3], help='Which model to choose.')
+parser.add_argument('model', type=int, choices=[1,2,3,4], help='Which model to choose.')
 # Batch size
 parser.add_argument('-bs', '--batch_size', type=int, default=3072, help='Batch size.')
 # Data directory
@@ -29,7 +29,7 @@ if use_gpu:
 
 test_df = pd.read_csv(os.path.join(args.data_dir, 'testdata.csv'))
 
-if args.model in [1,2]:
+if args.model in [1,2,4]:
     train_df = pd.read_csv(os.path.join(args.data_dir, 'traindata.csv')).drop('loss', axis=1)
     df = pd.concat((train_df, test_df), axis=0).reset_index(drop=True)
     df = pd.get_dummies(df, columns=[f'cat{i}' for i in range(1, 117)])
@@ -48,7 +48,7 @@ outputs = None
 model.eval()
 pbar = tqdm(testloader, total= len(testset)//args.batch_size+1)
 for data in pbar:
-    if args.model in [1,2]:
+    if args.model in [1,2,4]:
         inputs = data['data'].float()
         if use_gpu:
             inputs = inputs.cuda()
