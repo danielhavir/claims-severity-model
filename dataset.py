@@ -36,9 +36,3 @@ class AllStateDset(thd.Dataset):
             sample['label'] = self.y[idx]
         
         return sample
-
-if __name__ == '__main__':
-    import os
-    df = pd.read_csv(os.path.join(os.environ['data'], 'allstate', 'traindata.csv'))
-    dset = AllStateDset(df, one_hot=True)
-    import pdb; pdb.set_trace()
