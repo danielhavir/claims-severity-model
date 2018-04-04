@@ -18,7 +18,7 @@ DATA_DIR = os.path.join(os.environ['data'], 'allstate')
 parser = argparse.ArgumentParser()
 
 # Model
-parser.add_argument('model', type=int, choices=[1,2,3,4], help='Which model to choose.')
+parser.add_argument('model', type=int, choices=[1,2,3], help='Which model to choose.')
 # Batch size
 parser.add_argument('-bs', '--batch_size', type=int, default=1024, help='Batch size.')
 # Epochs
@@ -48,35 +48,15 @@ with open('data/emb_size.json', 'r') as f:
     emb_size = json.load(f)
 
 df = pd.read_csv(os.path.join(args.data_dir, 'traindata.csv'))
-if args.model in [1,2,4]:
-    df = pd.get_dummies(df, columns=emb_size.keys())
+df = pd.get_dummies(df, columns=emb_size.keys())
     
 train_ids, val_ids = train_test_split(df.index.values, test_size=0.1, random_state=args.seed)
 
 train_df = df.loc[train_ids].reset_index(drop=True)
 val_df = df.loc[val_ids].reset_index(drop=True)
 
-if args.model == 1:
-    trainset = AllStateDset(train_df, one_hot=True)
-    validset = AllStateDset(val_df, one_hot=True)
-    model = Net1(trainset.dim)
-
-elif args.model == 2:
-    trainset = AllStateDset(train_df, one_hot=True)
-    validset = AllStateDset(val_df, one_hot=True)
-    model = Net2(trainset.dim)
-
-elif args.model == 3:
-    trainset = AllStateDset(train_df)
-    validset = AllStateDset(val_df)
-    model = Net3(emb_size)
-
-elif args.model == 4:
-    trainset = AllStateDset(train_df, one_hot=True)
-    validset = AllStateDset(val_df, one_hot=True)
-    model = Net4(trainset.dim)
-
-print(model)
+trainset = AllStateDset(train_df)
+validset = AllStateDset(val_df)
 
 trainloader = thd.DataLoader(trainset, batch_size=args.batch_size, num_workers=4)
 validloader = thd.DataLoader(validset, batch_size=args.batch_size, num_workers=4)
@@ -84,6 +64,14 @@ print(4*'#', 'loaders ready'.upper(), 4*'#', end='\n\n')
 
 loaders = {'train': trainloader, 'val': validloader}
 sizes = {'train': len(trainset), 'val': len(validset)}
+
+if args.model == 1:
+    model = Net1(trainset.dim)
+elif args.model == 2:
+    model = Net2(trainset.dim)
+elif args.model == 3:
+    model = Net3(trainset.dim)
+print(model)
 
 if use_gpu:
     if args.multi_gpu:
@@ -111,21 +99,11 @@ for epoch in range(1, args.epochs+1):
 
         running_loss = 0.0; total = 0
         pbar = tqdm(loaders[phase], total=sizes[phase]//args.batch_size+1)
-        for i, data in enumerate(pbar):
-            if args.model in [1,2,4]:
-                inputs, labels = data['data'].float(), data['label']
-                if use_gpu:
-                    inputs, labels = inputs.cuda(), labels.cuda()
-                inputs = Variable(inputs)
+        for i, (inputs, labels) in enumerate(pbar):
+            if use_gpu:
+                inputs, labels = inputs.cuda(), labels.cuda()
             
-            elif args.model == 3:
-                categorical, continuous, labels = data['cat'].long(), data['cont'].float(), data['label']
-                if use_gpu:
-                    categorical, continuous, labels = categorical.cuda(), continuous.cuda(), labels.cuda()
-                categorical, continuous = Variable(categorical), Variable(continuous)
-                inputs = (categorical, continuous)
-            
-            labels = Variable(labels.float())
+            inputs, labels = Variable(inputs.float()), Variable(labels.float())
 
             optimizer.zero_grad()
 
@@ -152,7 +130,7 @@ for epoch in range(1, args.epochs+1):
     
     if not args.no_checkpoints and epoch_loss < best_loss:
         best_loss = epoch_loss
-        torch.save(model, f'data/checkpoints/model_0{args.model}.ckpt')
+        torch.save(model, f'data/checkpoints/test_model_0{args.model}.ckpt')
         print(2*'#', f'Best loss: {best_loss} achieved. Model saved', 2*'#')
     
     scheduler.step()

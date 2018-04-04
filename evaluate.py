@@ -14,7 +14,7 @@ DATA_DIR = os.path.join(os.environ['data'], 'allstate')
 parser = argparse.ArgumentParser()
 
 # Model
-parser.add_argument('model', type=int, choices=[1,2,3,4], help='Which model to choose.')
+parser.add_argument('model', type=int, choices=[1,2,3], help='Which model to choose.')
 # Batch size
 parser.add_argument('-bs', '--batch_size', type=int, default=3072, help='Batch size.')
 # Data directory
@@ -29,37 +29,25 @@ if use_gpu:
 
 test_df = pd.read_csv(os.path.join(args.data_dir, 'testdata.csv'))
 
-if args.model in [1,2,4]:
-    train_df = pd.read_csv(os.path.join(args.data_dir, 'traindata.csv')).drop('loss', axis=1)
-    df = pd.concat((train_df, test_df), axis=0).reset_index(drop=True)
-    df = pd.get_dummies(df, columns=[f'cat{i}' for i in range(1, 117)])
-    for col in df.columns:
-        if col.endswith('_0'):
-            df = df.drop(col, axis=1)
-    test_df = df.loc[train_df.shape[0]:,:].reset_index(drop=True)
-    del df, train_df
-    testset = AllStateDset(test_df, train=False, one_hot=True)
-else:
-    testset = AllStateDset(test_df, train=False)
+train_df = pd.read_csv(os.path.join(args.data_dir, 'traindata.csv')).drop('loss', axis=1)
+df = pd.concat((train_df, test_df), axis=0).reset_index(drop=True)
+df = pd.get_dummies(df, columns=[f'cat{i}' for i in range(1, 117)])
+for col in df.columns:
+    if col.endswith('_0'):
+        df = df.drop(col, axis=1)
+test_df = df.loc[train_df.shape[0]:,:].reset_index(drop=True)
+del df, train_df
 
+testset = AllStateDset(test_df, train=False)
 testloader = thd.DataLoader(testset, batch_size=args.batch_size, num_workers=4)
 
 outputs = None
 model.eval()
 pbar = tqdm(testloader, total= len(testset)//args.batch_size+1)
-for data in pbar:
-    if args.model in [1,2,4]:
-        inputs = data['data'].float()
-        if use_gpu:
-            inputs = inputs.cuda()
-        inputs = Variable(inputs)
-
-    elif args.model == 3:
-        categorical, continuous = data['cat'].long(), data['cont'].float()
-        if use_gpu:
-            categorical, continuous = categorical.cuda(), continuous.cuda()
-        categorical, continuous = Variable(categorical), Variable(continuous)
-        inputs = (categorical, continuous)
+for inputs in pbar:
+    if use_gpu:
+        inputs = inputs.cuda()
+    inputs = Variable(inputs.float())
 
     output = model(inputs)
         
@@ -77,4 +65,4 @@ preds = outputs.view(-1).data.cpu().numpy()
 subm = np.stack([ids, preds], axis=1)
 subm = pd.DataFrame(subm, columns=['id', 'loss'])
 subm['id'] = subm['id'].astype(int)
-subm.to_csv(f'data/subm/submission_0{args.model}.csv', index=False)
+subm.to_csv(f'data/subm/test_submission_0{args.model}.csv', index=False)
