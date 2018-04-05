@@ -4,6 +4,8 @@ import torch.optim as optim
 from torch.autograd import Variable
 import torch.utils.data as thd
 import os, json
+from collections import defaultdict
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from dataset import AllStateDset
@@ -23,6 +25,8 @@ parser.add_argument('model', type=int, choices=[1,2,3], help='Which model to cho
 parser.add_argument('-bs', '--batch_size', type=int, default=1024, help='Batch size.')
 # Epochs
 parser.add_argument('-e', '--epochs', type=int, default=15, help='Number of epochs.')
+# Optimizer
+parser.add_argument('-o', '--optim', type=str, choices=['sgd', 'adam'], default='adam', help='Optimizer.')
 # Learning rate
 parser.add_argument('-lr', '--learning_rate', type=float, default=0.02, help='Learning rate.')
 # Gamma learning rate decay
@@ -72,6 +76,8 @@ elif args.model == 2:
 elif args.model == 3:
     model = Net3(trainset.dim)
 print(model)
+num_params = sum([np.prod(p.size()) for p in model.parameters()])
+print('Number of parameters:', num_params)
 
 if use_gpu:
     if args.multi_gpu:
@@ -81,11 +87,15 @@ if use_gpu:
 print(4*'#', 'model built'.upper(), 4*'#', end='\n\n')
 
 criterion = nn.L1Loss(size_average=True)
-optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+if args.optim == 'adam':
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+elif args.optim == 'sgd':
+    optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+print('Using optimizer:', optimizer.__class__.__name__)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=args.lr_decay)
 best_loss = float('inf')
 
-times = [] ##### DELETE
+stats = defaultdict(list)
 
 print(4*'#', 'starting training'.upper(), 4*'#', end='\n\n')
 for epoch in range(1, args.epochs+1):
@@ -124,15 +134,14 @@ for epoch in range(1, args.epochs+1):
         print(f'Phase {phase.upper()}, Epoch {epoch}, Loss {round(epoch_loss, 3)}',
         f'Time {round(time()-t0, 2)}s', end='\n\n')
 
-        
-    if epoch > 1:
-        times.append((time()-t0))
+        stats[phase].append(epoch_loss)
     
     if not args.no_checkpoints and epoch_loss < best_loss:
         best_loss = epoch_loss
-        torch.save(model, f'data/checkpoints/test_model_0{args.model}.ckpt')
+        torch.save(model, os.path.join('data', 'checkpoints', f'model_0{args.model}.ckpt'))
         print(2*'#', f'Best loss: {best_loss} achieved. Model saved', 2*'#')
     
     scheduler.step()
 
-print(sum(times)/len(times))
+with open(os.path.join('data', 'stats', f'model_stats_0{args.model}.json'), 'w') as f:
+    json.dump(stats, f)

@@ -23,7 +23,7 @@ args = parser.parse_args()
 
 use_gpu = torch.cuda.is_available()
 
-model = torch.load(f'data/checkpoints/model_0{args.model}.ckpt')
+model = torch.load(os.path.join('data', 'checkpoints', f'model_0{args.model}.ckpt'))
 if use_gpu:
     model.cuda()
 
