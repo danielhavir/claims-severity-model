@@ -28,7 +28,7 @@ parser.add_argument('-e', '--epochs', type=int, default=15, help='Number of epoc
 # Optimizer
 parser.add_argument('-o', '--optim', type=str, choices=['sgd', 'adam'], default='adam', help='Optimizer.')
 # Learning rate
-parser.add_argument('-lr', '--learning_rate', type=float, default=0.02, help='Learning rate.')
+parser.add_argument('-lr', '--learning_rate', type=float, default=0.003, help='Learning rate.')
 # Gamma learning rate decay
 parser.add_argument('--lr_decay', type=float, default=0.5, help='Learning rate decay.')
 # Run on CPU?

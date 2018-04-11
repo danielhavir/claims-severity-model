@@ -10,7 +10,7 @@
 
 ### Default hyper-parameters (similar to the paper):
 * Per-GPU `batch_size` = 1024
-* Initial `learning_rate` = 0.02
+* Initial `learning_rate` = 0.003
 * Step `lr_decay` gamma = 0.5
 
 ### Create the following directory structure:
